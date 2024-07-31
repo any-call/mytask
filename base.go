@@ -17,7 +17,7 @@ var (
 	cronMap = mymap.NewMap[int, *cron.Cron]()   //map[int]*cron.Cron{}
 )
 
-func Add(task ScheduleTask, spec string, start bool) {
+func add(task ScheduleTask, spec string, runImmediately bool) {
 	if _, ok := taskMap.Value(task.ID()); ok {
 		mylog.Debug(fmt.Errorf("add  task ID %d exist ", task.ID()))
 		return
@@ -33,15 +33,17 @@ func Add(task ScheduleTask, spec string, start bool) {
 		c := cron.New()
 		cronMap.Insert(task.ID(), c)
 
-		if start {
-			if err := c.AddFunc(spec, task.Cmd()); err != nil {
-				panic(err)
-			}
-			c.Start()
+		if err := c.AddFunc(spec, task.Cmd()); err != nil {
+			panic(err)
+		}
+		c.Start() // 启动 cron 调度器
+
+		if runImmediately { //建立任务后立即运行
+			go task.Cmd()()
 		}
 	}
 }
 
-func AddThenStart(task ScheduleTask, spec string) {
-	Add(task, spec, true)
+func AddThenStart(task ScheduleTask, spec string, runImmediately bool) {
+	add(task, spec, runImmediately)
 }
