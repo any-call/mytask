@@ -47,3 +47,42 @@ func add(task ScheduleTask, spec string, runImmediately bool) {
 func AddThenStart(task ScheduleTask, spec string, runImmediately bool) {
 	add(task, spec, runImmediately)
 }
+
+func Stop(id int) {
+	if c, ok := cronMap.Value(id); ok {
+		fmt.Println("2: will stop task:", id)
+		c.Stop()
+	}
+}
+
+func Remove(id int) {
+	if _, ok := taskMap.Value(id); ok {
+		fmt.Println("remove  task ID:", id)
+		taskMap.Remove(id)
+	}
+	if c, ok := cronMap.Value(id); ok {
+		fmt.Println("1: will stop task:", id)
+		c.Stop()
+		cronMap.Remove(id)
+	}
+}
+
+func Refresh(id int, spec string) error {
+	if t, ok := taskMap.Value(id); ok {
+		if c, okk := cronMap.Value(id); okk {
+			fmt.Println("3:will stop task:", id)
+			c.Stop()
+			cronMap.Remove(id)
+			cc := cron.New()
+			if err := cc.AddFunc(spec, t.Cmd()); err != nil {
+				return err
+			}
+			cronMap.Insert(id, cc)
+			cc.Start()
+			return nil
+		}
+		return fmt.Errorf("incorrect cron id:%d", id)
+	}
+
+	return fmt.Errorf("incorrect task id:%d", id)
+}
