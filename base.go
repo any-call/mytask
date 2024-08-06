@@ -48,6 +48,14 @@ func AddThenStart(task ScheduleTask, spec string, runImmediately bool) {
 	add(task, spec, runImmediately)
 }
 
+func IsExist(id int) bool {
+	if _, ok := cronMap.Value(id); ok {
+		return true
+	}
+
+	return false
+}
+
 func Stop(id int) {
 	if c, ok := cronMap.Value(id); ok {
 		fmt.Println("2: will stop task:", id)
