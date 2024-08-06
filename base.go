@@ -8,13 +8,13 @@ import (
 )
 
 type ScheduleTask interface {
-	ID() int
+	ID() int64
 	Cmd() func()
 }
 
 var (
-	taskMap = mymap.NewMap[int, ScheduleTask]() //map[int]ScheduleTask{} =
-	cronMap = mymap.NewMap[int, *cron.Cron]()   //map[int]*cron.Cron{}
+	taskMap = mymap.NewMap[int64, ScheduleTask]() //map[int]ScheduleTask{} =
+	cronMap = mymap.NewMap[int64, *cron.Cron]()   //map[int]*cron.Cron{}
 )
 
 func add(task ScheduleTask, spec string, runImmediately bool) {
@@ -48,7 +48,7 @@ func AddThenStart(task ScheduleTask, spec string, runImmediately bool) {
 	add(task, spec, runImmediately)
 }
 
-func IsExist(id int) bool {
+func IsExist(id int64) bool {
 	if _, ok := cronMap.Value(id); ok {
 		return true
 	}
@@ -56,14 +56,14 @@ func IsExist(id int) bool {
 	return false
 }
 
-func Stop(id int) {
+func Stop(id int64) {
 	if c, ok := cronMap.Value(id); ok {
 		fmt.Println("2: will stop task:", id)
 		c.Stop()
 	}
 }
 
-func Remove(id int) {
+func Remove(id int64) {
 	if _, ok := taskMap.Value(id); ok {
 		fmt.Println("remove  task ID:", id)
 		taskMap.Remove(id)
@@ -75,7 +75,7 @@ func Remove(id int) {
 	}
 }
 
-func Refresh(id int, spec string) error {
+func Refresh(id int64, spec string) error {
 	if t, ok := taskMap.Value(id); ok {
 		if c, okk := cronMap.Value(id); okk {
 			fmt.Println("3:will stop task:", id)
