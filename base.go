@@ -75,7 +75,7 @@ func Remove(id int64) {
 	}
 }
 
-func Refresh(id int64, spec string) error {
+func Reset(id int64, spec string) error {
 	if t, ok := taskMap.Value(id); ok {
 		if c, okk := cronMap.Value(id); okk {
 			fmt.Println("3:will stop task:", id)
