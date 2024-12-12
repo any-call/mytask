@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/any-call/gobase/util/mylog"
 	"github.com/any-call/gobase/util/mymap"
-	"github.com/robfig/cron"
+	"github.com/robfig/cron/v3"
 )
 
 type ScheduleTask interface {
@@ -30,10 +30,10 @@ func add(task ScheduleTask, spec string, runImmediately bool) {
 
 	taskMap.Insert(task.ID(), task)
 	{
-		c := cron.New()
+		c := cron.New(cron.WithSeconds())
 		cronMap.Insert(task.ID(), c)
 
-		if err := c.AddFunc(spec, task.Cmd()); err != nil {
+		if _, err := c.AddFunc(spec, task.Cmd()); err != nil {
 			panic(err)
 		}
 		c.Start() // 启动 cron 调度器
@@ -79,10 +79,17 @@ func Refresh(id int64, spec string) error {
 	if t, ok := taskMap.Value(id); ok {
 		if c, okk := cronMap.Value(id); okk {
 			fmt.Println("3:will stop task:", id)
+			listEntry := c.Entries()
+			if listEntry != nil {
+				for i, _ := range listEntry {
+					c.Remove(listEntry[i].ID)
+				}
+			}
+
 			c.Stop()
 			cronMap.Remove(id)
-			cc := cron.New()
-			if err := cc.AddFunc(spec, t.Cmd()); err != nil {
+			cc := cron.New(cron.WithSeconds())
+			if _, err := cc.AddFunc(spec, t.Cmd()); err != nil {
 				return err
 			}
 			cronMap.Insert(id, cc)
