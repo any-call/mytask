@@ -30,7 +30,7 @@ func add(task ScheduleTask, spec string, runImmediately bool) {
 
 	taskMap.Insert(task.ID(), task)
 	{
-		c := cron.New(cron.WithSeconds())
+		c := cron.New()
 		cronMap.Insert(task.ID(), c)
 
 		if _, err := c.AddFunc(spec, task.Cmd()); err != nil {
@@ -88,7 +88,7 @@ func Reset(id int64, spec string) error {
 
 			c.Stop()
 			cronMap.Remove(id)
-			cc := cron.New(cron.WithSeconds())
+			cc := cron.New()
 			if _, err := cc.AddFunc(spec, t.Cmd()); err != nil {
 				return err
 			}
