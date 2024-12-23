@@ -5,6 +5,7 @@ import (
 	"github.com/any-call/gobase/util/mylog"
 	"github.com/any-call/gobase/util/mymap"
 	"github.com/robfig/cron/v3"
+	"time"
 )
 
 type ScheduleTask interface {
@@ -13,8 +14,8 @@ type ScheduleTask interface {
 }
 
 var (
-	taskMap = mymap.NewMap[int64, ScheduleTask]() //map[int]ScheduleTask{} =
-	cronMap = mymap.NewMap[int64, *cron.Cron]()   //map[int]*cron.Cron{}
+	taskMap         = mymap.NewMap[int64, ScheduleTask]() //map[int]ScheduleTask{} =
+	cronAndTimerMap = mymap.NewMap[int64, any]()          //map[int]*cron.Cron{}
 )
 
 func add(task ScheduleTask, spec string, runImmediately bool) {
@@ -23,7 +24,7 @@ func add(task ScheduleTask, spec string, runImmediately bool) {
 		return
 	}
 
-	if _, ok := cronMap.Value(task.ID()); ok {
+	if _, ok := cronAndTimerMap.Value(task.ID()); ok {
 		mylog.Debug(fmt.Errorf("add  task ID %d exist ", task.ID()))
 		return
 	}
@@ -31,7 +32,7 @@ func add(task ScheduleTask, spec string, runImmediately bool) {
 	taskMap.Insert(task.ID(), task)
 	{
 		c := cron.New()
-		cronMap.Insert(task.ID(), c)
+		cronAndTimerMap.Insert(task.ID(), c)
 
 		if _, err := c.AddFunc(spec, task.Cmd()); err != nil {
 			panic(err)
@@ -44,12 +45,39 @@ func add(task ScheduleTask, spec string, runImmediately bool) {
 	}
 }
 
+func addTimeTask(task ScheduleTask, t time.Duration, runImmediately bool) {
+	if _, ok := taskMap.Value(task.ID()); ok {
+		mylog.Debug(fmt.Errorf("add  task ID %d exist ", task.ID()))
+		return
+	}
+
+	if _, ok := cronAndTimerMap.Value(task.ID()); ok {
+		mylog.Debug(fmt.Errorf("add  task ID %d exist ", task.ID()))
+		return
+	}
+
+	taskMap.Insert(task.ID(), task)
+	{
+		c := NewTimerTask(t, task)
+		cronAndTimerMap.Insert(task.ID(), c)
+		c.Start() // 启动 cron 调度器
+
+		if runImmediately { //建立任务后立即运行
+			go task.Cmd()()
+		}
+	}
+}
+
 func AddThenStart(task ScheduleTask, spec string, runImmediately bool) {
 	add(task, spec, runImmediately)
 }
 
+func AddTimerThenStart(task ScheduleTask, t time.Duration, runImmediately bool) {
+	addTimeTask(task, t, runImmediately)
+}
+
 func IsExist(id int64) bool {
-	if _, ok := cronMap.Value(id); ok {
+	if _, ok := cronAndTimerMap.Value(id); ok {
 		return true
 	}
 
@@ -57,9 +85,15 @@ func IsExist(id int64) bool {
 }
 
 func Stop(id int64) {
-	if c, ok := cronMap.Value(id); ok {
+	if c, ok := cronAndTimerMap.Value(id); ok {
 		fmt.Println("2: will stop task:", id)
-		c.Stop()
+		if c1, ok := c.(*cron.Cron); ok {
+			c1.Stop()
+		} else {
+			if c2, ok := c.(*TimerTask); ok {
+				c2.Stop()
+			}
+		}
 	}
 }
 
@@ -68,33 +102,61 @@ func Remove(id int64) {
 		fmt.Println("remove  task ID:", id)
 		taskMap.Remove(id)
 	}
-	if c, ok := cronMap.Value(id); ok {
+
+	if c, ok := cronAndTimerMap.Value(id); ok {
 		fmt.Println("1: will stop task:", id)
-		c.Stop()
-		cronMap.Remove(id)
+		if c1, ok := c.(*cron.Cron); ok {
+			c1.Stop()
+		} else {
+			if c2, ok := c.(*TimerTask); ok {
+				c2.Cancel()
+			}
+		}
+		cronAndTimerMap.Remove(id)
 	}
 }
 
-func Reset(id int64, spec string) error {
+func ResetCron(id int64, spec string) error {
 	if t, ok := taskMap.Value(id); ok {
-		if c, okk := cronMap.Value(id); okk {
+		if c, okk := cronAndTimerMap.Value(id); okk {
 			fmt.Println("3:will stop task:", id)
-			listEntry := c.Entries()
-			if listEntry != nil {
-				for i, _ := range listEntry {
-					c.Remove(listEntry[i].ID)
+			if c1, ok := c.(*cron.Cron); ok {
+				listEntry := c1.Entries()
+				if listEntry != nil {
+					for i, _ := range listEntry {
+						c1.Remove(listEntry[i].ID)
+					}
 				}
-			}
 
-			c.Stop()
-			cronMap.Remove(id)
-			cc := cron.New()
-			if _, err := cc.AddFunc(spec, t.Cmd()); err != nil {
-				return err
+				c1.Stop()
+				cronAndTimerMap.Remove(id)
+				cc := cron.New()
+				if _, err := cc.AddFunc(spec, t.Cmd()); err != nil {
+					return err
+				}
+				cronAndTimerMap.Insert(id, cc)
+				cc.Start()
+				return nil
 			}
-			cronMap.Insert(id, cc)
-			cc.Start()
-			return nil
+		}
+		return fmt.Errorf("incorrect cron id:%d", id)
+	}
+
+	return fmt.Errorf("incorrect task id:%d", id)
+}
+
+func ResetTimer(id int64, tm time.Duration) error {
+	if t, ok := taskMap.Value(id); ok {
+		if c, okk := cronAndTimerMap.Value(id); okk {
+			fmt.Println("3:will stop task:", id)
+			if c1, ok := c.(*TimerTask); ok {
+				c1.Cancel()
+				cronAndTimerMap.Remove(id)
+				cc := NewTimerTask(tm, t)
+				cronAndTimerMap.Insert(id, cc)
+				cc.Start()
+				return nil
+			}
 		}
 		return fmt.Errorf("incorrect cron id:%d", id)
 	}
