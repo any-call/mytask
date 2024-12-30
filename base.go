@@ -76,6 +76,10 @@ func AddTimerThenStart(task ScheduleTask, t time.Duration, runImmediately bool) 
 	addTimeTask(task, t, runImmediately)
 }
 
+func GetTaskModel(taskId int64) (any, bool) {
+	return taskMap.Value(taskId)
+}
+
 func IsExist(id int64) bool {
 	if _, ok := cronAndTimerMap.Value(id); ok {
 		return true
