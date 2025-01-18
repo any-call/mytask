@@ -45,7 +45,7 @@ func add(task ScheduleTask, spec string, runImmediately bool) {
 	}
 }
 
-func addTimeTask(task ScheduleTask, t time.Duration, runImmediately bool) {
+func addTimeTask(task ScheduleTask, t time.Duration, asyncTask bool, runImmediately bool) {
 	if _, ok := taskMap.Value(task.ID()); ok {
 		mylog.Debug(fmt.Errorf("add  task ID %d exist ", task.ID()))
 		return
@@ -60,7 +60,7 @@ func addTimeTask(task ScheduleTask, t time.Duration, runImmediately bool) {
 	{
 		c := NewTimerTask(t, task)
 		cronAndTimerMap.Insert(task.ID(), c)
-		c.Start() // 启动 cron 调度器
+		c.Start(asyncTask) // 启动 cron 调度器
 
 		if runImmediately { //建立任务后立即运行
 			go task.Cmd()()
@@ -72,8 +72,8 @@ func AddThenStart(task ScheduleTask, spec string, runImmediately bool) {
 	add(task, spec, runImmediately)
 }
 
-func AddTimerThenStart(task ScheduleTask, t time.Duration, runImmediately bool) {
-	addTimeTask(task, t, runImmediately)
+func AddTimerThenStart(task ScheduleTask, t time.Duration, asyncTask, runImmediately bool) {
+	addTimeTask(task, t, asyncTask, runImmediately)
 }
 
 func GetTaskModel(taskId int64) (any, bool) {
@@ -149,7 +149,7 @@ func ResetCron(id int64, spec string) error {
 	return fmt.Errorf("incorrect task id:%d", id)
 }
 
-func ResetTimer(id int64, tm time.Duration) error {
+func ResetTimer(id int64, tm time.Duration, asyncTask bool) error {
 	if t, ok := taskMap.Value(id); ok {
 		if c, okk := cronAndTimerMap.Value(id); okk {
 			fmt.Println("3:will stop task:", id)
@@ -158,7 +158,7 @@ func ResetTimer(id int64, tm time.Duration) error {
 				cronAndTimerMap.Remove(id)
 				cc := NewTimerTask(tm, t)
 				cronAndTimerMap.Insert(id, cc)
-				cc.Start()
+				cc.Start(asyncTask)
 				return nil
 			}
 		}

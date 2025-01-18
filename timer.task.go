@@ -26,7 +26,7 @@ func NewTimerTask(duration time.Duration, t ScheduleTask) *TimerTask {
 }
 
 // 启动定时任务
-func (self *TimerTask) Start() {
+func (self *TimerTask) Start(asyncTask bool) {
 	self.Lock()
 	defer self.Unlock()
 
@@ -41,7 +41,11 @@ func (self *TimerTask) Start() {
 			select {
 			case <-timer.C:
 				if self.task != nil {
-					self.task.Cmd()()
+					if asyncTask { //异步任务，协程运行
+						go self.task.Cmd()()
+					} else {
+						self.task.Cmd()()
+					}
 				}
 				timer.Reset(self.duration)
 				break

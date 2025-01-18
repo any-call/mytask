@@ -21,6 +21,6 @@ func (self *MyTask) Cmd() func() {
 
 func TestNewTimerTask(t *testing.T) {
 	task := NewTimerTask(time.Second, &MyTask{})
-	task.Start()
+	task.Start(false)
 	time.Sleep(time.Second * 10)
 }
