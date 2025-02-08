@@ -37,7 +37,7 @@ func (self *mysqlDbBackup) Cmd() func() {
 
 		startTime := time.Now()
 		mylog.Info("enter mysqldb backup ")
-		fullfile, err := mysql.BackupMySQL(self.dbPass, self.dbPass, self.dbName, self.backupPath, func() []string {
+		fullfile, err := mysql.BackupMySQL(self.dbUser, self.dbPass, self.dbName, self.backupPath, func() []string {
 			ret := []string{}
 			if self.isSudo {
 				ret = []string{"sudo"}
