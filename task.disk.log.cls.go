@@ -27,7 +27,7 @@ func (self *diskLogClear) Cmd() func() {
 		defer self.Unlock()
 
 		mylog.Info("enter disk log ")
-		outstr, err := mycmd.Exec("journalctl", nil, fmt.Sprintf("--vacuum-size=%dM", self.maxLogSizeMB))
+		outstr, err := mycmd.Exec("journalctl", nil, false, fmt.Sprintf("--vacuum-size=%dM", self.maxLogSizeMB))
 		if err != nil {
 			mylog.Debug("disk log err :", err)
 			return

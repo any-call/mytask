@@ -66,7 +66,7 @@ func (self *mysqlDbBackup) Cmd() func() {
 			if !strings.HasSuffix(fullfile, filename) {
 				if _, err := mycmd.Exec("rm", func(c *exec.Cmd) {
 					c.Dir = self.backupPath
-				}, "-f", filename); err != nil {
+				}, false, "-f", filename); err != nil {
 					mylog.Debug("remove file err:", err)
 				}
 			}
