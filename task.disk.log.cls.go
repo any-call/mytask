@@ -11,10 +11,11 @@ type diskLogClear struct {
 	sync.Mutex
 	BaseTask
 	maxLogSizeMB int
+	isSudo       bool
 }
 
-func NewDiskLogCls(id int, maxLogSizeMB int) ScheduleTask {
-	t := &diskLogClear{maxLogSizeMB: maxLogSizeMB}
+func NewDiskLogCls(id int, maxLogSizeMB int, needSudo bool) ScheduleTask {
+	t := &diskLogClear{maxLogSizeMB: maxLogSizeMB, isSudo: needSudo}
 	t.SetID(int64(id))
 	return t
 }
@@ -27,7 +28,7 @@ func (self *diskLogClear) Cmd() func() {
 		defer self.Unlock()
 
 		mylog.Info("enter disk log ")
-		outstr, err := mycmd.Exec("journalctl", nil, false, fmt.Sprintf("--vacuum-size=%dM", self.maxLogSizeMB))
+		outstr, err := mycmd.Exec("journalctl", nil, self.isSudo, fmt.Sprintf("--vacuum-size=%dM", self.maxLogSizeMB))
 		if err != nil {
 			mylog.Debug("disk log err :", err)
 			return
